@@ -1,0 +1,37 @@
+name: Convert Python scripts to Jupyter notebooks
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install Jupytext
+        run: pip install jupytext
+
+      - name: Convert Python scripts to notebooks
+        run: |
+          for script in scripts/*.py; do
+            jupytext --to ipynb "$script" --outpub notebooks/"${script%.py}".ipynb
+          done
+
+      - name: Commit notebooks
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add *.ipynb
+          git commit -m "Add Jupyter notebooks" || echo "No changes to commit"
+          git push
