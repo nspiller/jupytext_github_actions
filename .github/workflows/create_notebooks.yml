@@ -25,7 +25,7 @@ jobs:
       - name: Convert Python scripts to notebooks
         run: |
           for script in scripts/*.py; do
-            jupytext --to ipynb "$script" --outpub notebooks/"${script%.py}".ipynb
+            jupytext --to ipynb "$script" --output notebooks/"${script%.py}".ipynb
           done
 
       - name: Commit notebooks
