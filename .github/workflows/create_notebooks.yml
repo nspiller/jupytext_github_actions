@@ -2,22 +2,19 @@ name: Convert Python scripts to Jupyter notebooks
 
 on:
   pull_request:
-    types: [closed]
+    types: [opened, synchronize]
 
 jobs:
   convert:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: |
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      github.actor != 'github-actions[bot]' &&
-      github.actor != 'github-actions'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       
       - name: Set up Python
@@ -36,45 +33,12 @@ jobs:
             jupytext --to ipynb "$script" --output notebooks/"$notebook"
           done
 
-      - name: Set branch name
-        run: echo "BRANCH_NAME=create_notebooks_${{ github.run_id }}" >> $GITHUB_ENV
-
       - name: Create new branch, commit and push changes
         id: commit
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git checkout -b ${{ env.BRANCH_NAME }}
           git add notebooks/*.ipynb
           git diff --staged --quiet || echo "COMMIT=true" >> $GITHUB_ENV
           git commit -m "Add Jupyter notebooks" || echo "COMMIT=false" >> $GITHUB_ENV
-          git push origin ${{ env.BRANCH_NAME }}
-      
-      # - name: Create Pull Request
-      #   if: steps.commit.outputs.changed == ${{ env.COMMIT }}
-      #   uses: peter-evans/create-pull-request@v6
-      #   with:
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #     commit-message: Add Jupyter notebooks
-      #     title: Add Jupyter notebooks
-      #     branch: ${{ env.BRANCH_NAME }}
-      #     base: main
-      #     body: |
-      #       This pull request was automatically created by a GitHub Actions workflow.
-      #       It converts Python scripts to Jupyter notebooks using Jupytext whenever
-      #       a pull request is merged into the main branch.
-
-      # - name: Auto Merge Pull Request
-      #   if: steps.commit.outputs.changed == 'true'
-      #   uses: pascalgn/automerge-action@v0.16.2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     MERGE_METHOD: rebase
-
-      # - name: Delete branch after merge
-      #   if: success()
-      #   run: |
-      #     curl -X DELETE \
-      #       -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      #       -H "Accept: application/vnd.github.v3+json" \
-      #       https://api.github.com/repos/${{ github.repository }}/git/refs/heads/${{ env.branch_name }}
+          git push
