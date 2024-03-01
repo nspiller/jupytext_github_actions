@@ -48,7 +48,7 @@ jobs:
           git add notebooks/*.ipynb
           git diff --staged --quiet || echo "COMMIT=true" >> $GITHUB_ENV
           git commit -m "Add Jupyter notebooks" || echo "COMMIT=false" >> $GITHUB_ENV
-          git push origin ${{ env.BRANCH_NAME }}
+          git push
       
       - name: Create Pull Request
         if: steps.commit.outputs.changed == ${{ env.COMMIT }}
