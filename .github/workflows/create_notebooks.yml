@@ -9,21 +9,25 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.actor != 'github-actions[bot]' &&
+      github.actor != 'github-actions'
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
-
+          fetch-depth: 0
+      
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
 
       - name: Install Jupytext
-        run: pip install jupytext
+        run: |
+          pip install 'jupytext~=1.0'
 
       - name: Convert Python scripts to notebooks
         run: |
@@ -32,10 +36,34 @@ jobs:
             jupytext --to ipynb "$script" --output notebooks/"$notebook"
           done
 
-      - name: Commit notebooks
+      - name: Create new branch, commit and push changes
+        id: commit
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git checkout -b create_notebooks
           git add notebooks/*.ipynb
-          git commit -m "Add Jupyter notebooks" || echo "No changes to commit"
-          git push
+          git diff --staged --quiet || echo "::set-output name=changed::true"
+          git commit -m "Add Jupyter notebooks" || echo "::set-output name=changed::false"
+          git push origin create_notebooks
+      
+      - name: Create Pull Request
+        if: steps.commit.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Add Jupyter notebooks
+          title: Add Jupyter notebooks
+          branch: create_notebooks
+          base: main
+          body: |
+            This pull request was automatically created by a GitHub Actions workflow.
+            It converts Python scripts to Jupyter notebooks using Jupytext whenever
+            a pull request is merged into the main branch.
+
+      - name: Auto Merge Pull Request
+        if: steps.commit.outputs.changed == 'true'
+        uses: pascalgn/automerge-action@v0.14.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: rebase
