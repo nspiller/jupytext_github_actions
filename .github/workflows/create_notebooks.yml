@@ -30,7 +30,7 @@ jobs:
         run: |
           for script in scripts/*.py; do
             notebook=$(basename "$script" .py).ipynb
-            jupytext --to ipynb "$script" --output notebooks/"$notebook"
+            jupytext --to ipynb "$script" --update --output notebooks/"$notebook"
           done
 
       - name: Create new branch, commit and push changes
@@ -39,6 +39,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add notebooks/*.ipynb
-          git diff --staged --quiet || echo "COMMIT=true" >> $GITHUB_ENV
-          git commit -m "Add Jupyter notebooks" || echo "COMMIT=false" >> $GITHUB_ENV
+          git commit -m "Add Jupyter notebooks" || echo "No changes to commit"
           git push
