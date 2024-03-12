@@ -17,7 +17,7 @@
 # %% [markdown]
 # # Title
 # We need a second script file for testing purposes
-# and changes is example2.py
+# changing script files
 
 # %%
 print('Hello world!')
