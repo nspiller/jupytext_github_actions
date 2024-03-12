@@ -31,7 +31,7 @@ jobs:
 
       - name: Convert Python scripts to notebooks
         run: |
-          for file in notebooks/*.ipynb notebooks/scripts/*.py ; do
+          for file in notebooks/*.ipynb scripts/*.py ; do
             jupytext --sync $file
           done
 
