@@ -1,8 +1,11 @@
-name: Convert Python scripts to Jupyter notebooks
+name: Sync between Python scripts to Jupyter notebooks
 
 on:
   pull_request:
     types: [opened, synchronize]
+  push:
+    branches:
+      - main
 
 jobs:
   convert:
@@ -28,9 +31,8 @@ jobs:
 
       - name: Convert Python scripts to notebooks
         run: |
-          for script in scripts/*.py; do
-            notebook=$(basename "$script" .py).ipynb
-            jupytext --to ipynb "$script" --update --output notebooks/"$notebook"
+          for file in notebooks/*.ipynb notebooks/scripts/*.py ; do
+            jupytext --sync $file
           done
 
       - name: Create new branch, commit and push changes
