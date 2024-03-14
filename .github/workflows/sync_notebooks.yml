@@ -29,10 +29,48 @@ jobs:
         run: |
           pip install 'jupytext~=1.0'
 
-      - name: Convert Python scripts to notebooks
+      - name: Update notebook or script
         run: |
-          for file in notebooks/*.ipynb scripts/*.py ; do
-            jupytext --sync $file
+          # Function to check which file was last modified
+          function check_last_modified {
+            file1=$1
+            file2=$2
+
+            # Get the hash of the last commit that modified each file
+            last_commit_file1=$(git log -1 --format="%H" -- $file1)
+            last_commit_file2=$(git log -1 --format="%H" -- $file2)
+            last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
+
+            if [ "$last_commit_file1" != "$last_common_commit" ]; then
+              echo first
+            elif [ "$last_commit_file2" != "$last_common_commit" ]; then
+              echo last
+            else
+              echo both
+            fi
+          }
+
+          NOTEBOOK_FOLDER=notebooks
+          SCRIPT_FOLDER=scripts
+
+          for file in $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py; do
+
+            # catch all .py and .ipynb files
+            base="${file##*/}"
+            base="${base%.py}"
+            base="${base%.ipynb}"
+            notebook=$NOTEBOOK_FOLDER/"$base.ipynb"
+            script=$SCRIPT_FOLDER/"$base.py"
+
+            # Check which file was last modified
+            last_modified=$(check_last_modified "$notebook" "$script")
+            if [ "$last_modified" == "first" ]; then
+              jupytext --to notebook $script
+            elif [ "$last_modified" == "last" ]; then
+              jupytext --to script $notebook
+            elif [ "$last_modified" == "both" ]; then
+              echo "Both $notebook and $script were last modified in same commit. Skipping..."
+            fi
           done
 
       - name: Create new branch, commit and push changes
