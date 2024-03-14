@@ -65,8 +65,10 @@ jobs:
             # Check which file was last modified
             last_modified=$(check_last_modified "$notebook" "$script")
             if [ "$last_modified" == "first" ]; then
+              echo "Updating $notebook from $script"
               jupytext --to notebook $script
             elif [ "$last_modified" == "last" ]; then
+              echo "Updating $script from $notebook"
               jupytext --to script $notebook
             elif [ "$last_modified" == "both" ]; then
               echo "Both $notebook and $script were last modified in same commit. Skipping..."
