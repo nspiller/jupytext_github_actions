@@ -1,4 +1,4 @@
-name: Sync between Python scripts to Jupyter notebooks
+name: Sync between Jupyter notebooks and Python plain text files
 
 on:
   pull_request:
@@ -91,12 +91,12 @@ jobs:
 
             # update or create the paired file
             if [ "$last_modified" == "notebook" ]; then
-              echo "Notebook file $notebook is newest. Updating script file."
+              echo "Notebook file $notebook is newest. Updating/creating script file."
               jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
               git add "$script"
             
             elif [ "$last_modified" == "script" ]; then
-              echo "Notebook file $notebook is oldest. Updating notebook file."
+              echo "Notebook file $notebook is oldest. Updating/creating notebook file."
               jupytext --update --to ipynb "$script" --output "$notebook"
               git add "$notebook"
 
