@@ -10,6 +10,9 @@ on:
 jobs:
   sync_notebooks:
     runs-on: ubuntu-latest
+    env:
+      NOTEBOOK_FOLDER: notebooks
+      SCRIPT_FOLDER: scripts
     permissions:
       contents: write
 
@@ -39,8 +42,16 @@ jobs:
             # Get the hash of the last commit that modified each file
             last_commit_file1=$(git log -1 --format="%H" -- $file1)
             last_commit_file2=$(git log -1 --format="%H" -- $file2)
-            last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
 
+            # if one of the files does not exist, return the other
+            if [ -z "$last_commit_file1" ]; then
+              echo last
+            elif [ -z "$last_commit_file2" ]; then
+              echo first
+            fi
+
+            # compare commit hashes of files with last common commit hash
+            last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
             if [ "$last_commit_file1" != "$last_common_commit" ]; then
               echo first
             elif [ "$last_commit_file2" != "$last_common_commit" ]; then
@@ -50,12 +61,15 @@ jobs:
             fi
           }
 
-          NOTEBOOK_FOLDER=notebooks
-          SCRIPT_FOLDER=scripts
+          # locations of notebooks and scripts folders
+          NOTEBOOK_FOLDER=${{ env.NOTEBOOK_FOLDER }}
+          SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
+          mkdir -p $NOTEBOOK_FOLDER $SCRIPT_FOLDER
 
+          # catch all .py and .ipynb files, so the sync works if either file does not exist
           for file in $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py; do
 
-            # catch all .py and .ipynb files
+            # construct names for file pair
             base="${file##*/}"
             base="${base%.py}"
             base="${base%.ipynb}"
@@ -64,26 +78,31 @@ jobs:
 
             # Check which file was last modified
             last_modified=$(check_last_modified "$notebook" "$script")
+
+            # update or create the paired file
             if [ "$last_modified" == "first" ]; then
-              echo "Notebook file $notebook is older than script file $script. Updating..."
-              touch -d @0 "$notebook"
-              touch -d @1000 "$script"
-              jupytext --sync "$notebook"
+              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
+              jupytext --to ipynb "$script" --output "$notebook"
             elif [ "$last_modified" == "last" ]; then
-              echo "Notebook file $notebook is newer than script file $script. Updating..."
-              touch -d @1000 "$notebook"
-              touch -d @0 "$script"
-              jupytext --sync "$notebook"           
+              echo "Notebook file $notebook is newer than script file $script. Updating script file."
+              jupytext --to py:percent "$notebook" --output "$script"
             elif [ "$last_modified" == "both" ]; then
-              echo "Both $notebook and $script were last modified in same commit. Skipping..."
+              echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
             fi
           done
 
       - name: Create new branch, commit and push changes
         id: commit
         run: |
+          # Git setup
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add notebooks/*.ipynb scripts/*.py
+          
+          # add changes for notebooks and script files
+          NOTEBOOK_FOLDER=${{ env.NOTEBOOK_FOLDER }}
+          SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
+          git add $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py
+
+          # commit and push changes
           git commit -m "Sync notebooks and script files" || echo "No changes to commit"
           git push
