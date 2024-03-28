@@ -106,20 +106,10 @@ jobs:
             fi
           done
 
-      - name: Create new branch, commit and push changes
-        id: commit
-        run: |
-          # shopt -s nullglob
-
           # Git setup
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          # # add changes for notebooks and script files
-          # NOTEBOOK_FOLDER=${{ env.NOTEBOOK_FOLDER }}
-          # SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
-          # git add $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py
-
           # commit and push changes
           git commit -m "Sync notebooks and script files" || echo "No changes to commit"
           git push
