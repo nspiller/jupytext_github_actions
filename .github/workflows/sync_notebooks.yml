@@ -38,30 +38,30 @@ jobs:
 
           # Function to check which file was last modified
           function check_last_modified {
-            file1=$1
-            file2=$2
+            notebook=$1
+            script=$2
 
             # Get the hash of the last commit that modified each file
-            last_commit_file1=$(git log -1 --format="%H" -- $file1)
-            last_commit_file2=$(git log -1 --format="%H" -- $file2)
+            last_commit_notebook=$(git log -1 --format="%H" -- $notebook)
+            last_commit_script=$(git log -1 --format="%H" -- $script)
 
             # if one of the files does not exist, return the other
-            if [ -z "$last_commit_file1" ]; then
-              echo first
+            if [ -z "$last_commit_notebook" ]; then
+              echo script
 
-            elif [ -z "$last_commit_file2" ]; then
-              echo last
+            elif [ -z "$last_commit_script" ]; then
+              echo notebook
 
             else
 
               # compare commit hashes of files with last common commit hash
-              last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
+              last_common_commit=$(git merge-base $last_commit_notebook $last_commit_script)
 
-              if [ "$last_commit_file1" != "$last_common_commit" ]; then
-                echo first
+              if [ "$last_commit_notebook" != "$last_common_commit" ]; then
+                echo notebook
 
-              elif [ "$last_commit_file2" != "$last_common_commit" ]; then
-                echo last
+              elif [ "$last_commit_script" != "$last_common_commit" ]; then
+                echo script
 
               else
                 echo both
@@ -90,15 +90,17 @@ jobs:
             last_modified=$(check_last_modified "$notebook" "$script")
 
             # update or create the paired file
-            if [ "$last_modified" == "first" ]; then
-              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
-              jupytext --update --to ipynb "$script" --output "$notebook"
-              git add "$notebook"
 
-            elif [ "$last_modified" == "last" ]; then
+
+            if [ "$last_modified" == "notebook" ]; then
               echo "Notebook file $notebook is newer than script file $script. Updating script file."
               jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
               git add "$script"
+            
+            elif [ "$last_modified" == "script" ]; then
+              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
+              jupytext --update --to ipynb "$script" --output "$notebook"
+              git add "$notebook"
 
             elif [ "$last_modified" == "both" ]; then
               echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
