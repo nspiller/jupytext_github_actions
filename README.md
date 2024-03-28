@@ -6,5 +6,3 @@ Instead of calling jupytext manually, we can now create notebooks from scripts f
 Only changes in the script files will add a commit to the PR, at least in theory.
 
 Jupytext with `--update` will not change the notebook, if the contents didn't change.
-
-Unrelated change
