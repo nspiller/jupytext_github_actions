@@ -34,7 +34,8 @@ jobs:
 
       - name: Update notebook or script
         run: |
-        
+          shopt -s nullglob
+
           # Function to check which file was last modified
           function check_last_modified {
             file1=$1
@@ -67,56 +68,50 @@ jobs:
           SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
           mkdir -p $NOTEBOOK_FOLDER $SCRIPT_FOLDER
 
-          notebooks=($NOTEBOOK_FOLDER/*.ipynb)
-          scripts=($SCRIPT_FOLDER/*.py)
+          # catch all .py and .ipynb files, so the sync works if
+          # (i) both files exist
+          # (ii) either of the two exist
+          for file in $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py; do
 
-          if [[ ${#notebooks[@]} -eq 0 && ${#scripts[@]} -eq 0 ]]; then
-            echo "No notebooks or scripts found. Skipping..."
+            # construct names for file pair
+            base="${file##*/}"
+            base="${base%.py}"
+            base="${base%.ipynb}"
+            notebook=$NOTEBOOK_FOLDER/"$base.ipynb"
+            script=$SCRIPT_FOLDER/"$base.py"
 
-          else
+            # Check which file was last modified
+            last_modified=$(check_last_modified "$notebook" "$script")
 
-            # catch all .py and .ipynb files, so the sync works if
-            # (i) both files exist
-            # (ii) either of the two exist
-            for file in "${notebooks[@]}" "${scripts[@]}"; do
+            # update or create the paired file
+            if [ "$last_modified" == "first" ]; then
+              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
+              jupytext --update --to ipynb "$script" --output "$notebook"
 
-              # construct names for file pair
-              base="${file##*/}"
-              base="${base%.py}"
-              base="${base%.ipynb}"
-              notebook=$NOTEBOOK_FOLDER/"$base.ipynb"
-              script=$SCRIPT_FOLDER/"$base.py"
+            elif [ "$last_modified" == "last" ]; then
+              echo "Notebook file $notebook is newer than script file $script. Updating script file."
+              jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
 
-              # Check which file was last modified
-              last_modified=$(check_last_modified "$notebook" "$script")
+            elif [ "$last_modified" == "both" ]; then
+              echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
+              
+            fi
+          done
 
-              # update or create the paired file
-              if [ "$last_modified" == "first" ]; then
-                echo "Notebook file $notebook is older than script file $script. Updating notebook file."
-                jupytext --update --to ipynb "$script" --output "$notebook"
+      - name: Create new branch, commit and push changes
+        id: commit
+        run: |
+          shopt -s nullglob
 
-              elif [ "$last_modified" == "last" ]; then
-                echo "Notebook file $notebook is newer than script file $script. Updating script file."
-                jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
+          # Git setup
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          # add changes for notebooks and script files
+          NOTEBOOK_FOLDER=${{ env.NOTEBOOK_FOLDER }}
+          SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
+          git add $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py
 
-              elif [ "$last_modified" == "both" ]; then
-                echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
-
-              fi
-            done
-
-            # Git setup
-            git config --global user.email "github-actions[bot]@users.noreply.github.com"
-            git config --global user.name "github-actions[bot]"
-            
-            # add changes for notebooks and script files
-            NOTEBOOK_FOLDER=${{ env.NOTEBOOK_FOLDER }}
-            SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
-            git add $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py
-
-            # commit and push changes
-            git commit -m "Sync notebooks and script files" || echo "No changes to commit"
-            git push
-
-          fi
-
+          # commit and push changes
+          git commit -m "Sync notebooks and script files" || echo "No changes to commit"
+          git push
