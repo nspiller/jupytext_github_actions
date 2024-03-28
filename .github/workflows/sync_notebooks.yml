@@ -82,10 +82,10 @@ jobs:
             # update or create the paired file
             if [ "$last_modified" == "first" ]; then
               echo "Notebook file $notebook is older than script file $script. Updating notebook file."
-              jupytext --to ipynb "$script" --output "$notebook"
+              jupytext --update --to ipynb "$script" --output "$notebook"
             elif [ "$last_modified" == "last" ]; then
               echo "Notebook file $notebook is newer than script file $script. Updating script file."
-              jupytext --to py:percent "$notebook" --output "$script"
+              jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
             elif [ "$last_modified" == "both" ]; then
               echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
             fi
