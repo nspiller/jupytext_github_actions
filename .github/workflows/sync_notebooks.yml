@@ -66,30 +66,45 @@ jobs:
           SCRIPT_FOLDER=${{ env.SCRIPT_FOLDER }}
           mkdir -p $NOTEBOOK_FOLDER $SCRIPT_FOLDER
 
-          # catch all .py and .ipynb files, so the sync works if either file does not exist
-          for file in $NOTEBOOK_FOLDER/*.ipynb $SCRIPT_FOLDER/*.py; do
+          
+          notebooks=($NOTEBOOK_FOLDER/*.ipynb)
+          scripts=($SCRIPT_FOLDER/*.py)
 
-            # construct names for file pair
-            base="${file##*/}"
-            base="${base%.py}"
-            base="${base%.ipynb}"
-            notebook=$NOTEBOOK_FOLDER/"$base.ipynb"
-            script=$SCRIPT_FOLDER/"$base.py"
+          if [[ ${#notebooks[@]} -eq 0 && ${#scripts[@]} -eq 0 ]]; then
+            echo "No notebooks or scripts found. Skipping..."
 
-            # Check which file was last modified
-            last_modified=$(check_last_modified "$notebook" "$script")
+          else
 
-            # update or create the paired file
-            if [ "$last_modified" == "first" ]; then
-              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
-              jupytext --update --to ipynb "$script" --output "$notebook"
-            elif [ "$last_modified" == "last" ]; then
-              echo "Notebook file $notebook is newer than script file $script. Updating script file."
-              jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
-            elif [ "$last_modified" == "both" ]; then
-              echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
-            fi
-          done
+            # catch all .py and .ipynb files, so the sync works if
+            # (i) both files exist
+            # (ii) either of the two exist
+            for file in "${notebooks[@]}" "${scripts[@]}"; do
+
+              # construct names for file pair
+              base="${file##*/}"
+              base="${base%.py}"
+              base="${base%.ipynb}"
+              notebook=$NOTEBOOK_FOLDER/"$base.ipynb"
+              script=$SCRIPT_FOLDER/"$base.py"
+
+              # Check which file was last modified
+              last_modified=$(check_last_modified "$notebook" "$script")
+
+              # update or create the paired file
+              if [ "$last_modified" == "first" ]; then
+                echo "Notebook file $notebook is older than script file $script. Updating notebook file."
+                jupytext --update --to ipynb "$script" --output "$notebook"
+
+              elif [ "$last_modified" == "last" ]; then
+                echo "Notebook file $notebook is newer than script file $script. Updating script file."
+                jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
+
+              elif [ "$last_modified" == "both" ]; then
+                echo "Both $notebook and $script were last modified in same commit. Assuming they are in sync."
+                
+              fi
+            done
+          fi
 
       - name: Create new branch, commit and push changes
         id: commit
