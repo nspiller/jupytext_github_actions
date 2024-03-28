@@ -47,24 +47,25 @@ jobs:
 
             # if one of the files does not exist, return the other
             if [ -z "$last_commit_file1" ]; then
-              echo last
-              return
-            elif [ -z "$last_commit_file2" ]; then
               echo first
-              return
-            fi
 
-            # compare commit hashes of files with last common commit hash
-            last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
-            if [ "$last_commit_file1" != "$last_common_commit" ]; then
-              echo first
-              return
-            elif [ "$last_commit_file2" != "$last_common_commit" ]; then
+            elif [ -z "$last_commit_file2" ]; then
               echo last
-              return
+
             else
-              echo both
-              return
+
+              # compare commit hashes of files with last common commit hash
+              last_common_commit=$(git merge-base $last_commit_file1 $last_commit_file2)
+
+              if [ "$last_commit_file1" != "$last_common_commit" ]; then
+                echo first
+
+              elif [ "$last_commit_file2" != "$last_common_commit" ]; then
+                echo last
+
+              else
+                echo both
+              fi
             fi
           }
 
