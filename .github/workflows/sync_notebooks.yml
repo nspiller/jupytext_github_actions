@@ -90,15 +90,13 @@ jobs:
             last_modified=$(check_last_modified "$notebook" "$script")
 
             # update or create the paired file
-
-
             if [ "$last_modified" == "notebook" ]; then
-              echo "Notebook file $notebook is newer than script file $script. Updating script file."
+              echo "Notebook file $notebook is newest. Updating script file."
               jupytext --opt notebook_metadata_filter="-all" --opt cell_metadata_filter="-all" --to py:percent "$notebook" --output "$script"
               git add "$script"
             
             elif [ "$last_modified" == "script" ]; then
-              echo "Notebook file $notebook is older than script file $script. Updating notebook file."
+              echo "Notebook file $notebook is oldest. Updating notebook file."
               jupytext --update --to ipynb "$script" --output "$notebook"
               git add "$notebook"
 
